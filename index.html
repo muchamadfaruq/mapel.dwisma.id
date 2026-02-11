@@ -137,6 +137,27 @@
             background-size: 1.25rem;
         }
 
+        /* Custom Checkbox Style */
+        .custom-checkbox {
+            width: 1.2rem;
+            height: 1.2rem;
+            border-radius: 0.3rem;
+            border: 2px solid #cbd5e1;
+            cursor: pointer;
+            accent-color: #ef4444;
+            /* Red for delete actions */
+        }
+
+        /* Toggle Switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #10B981;
+        }
+
+        .toggle-checkbox:checked+.toggle-label {
+            background-color: #10B981;
+        }
+
         /* --- TAMBAHAN STYLE MODAL --- */
         .modal {
             display: none;
@@ -190,7 +211,7 @@
 
                 <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
                     <div class="flex items-center gap-6">
-                        <!-- LOGO DIGANTI DISINI -->
+                        <!-- LOGO -->
                         <div
                             class="w-20 h-20 md:w-24 md:h-24 bg-white rounded-full p-2 shadow-lg flex items-center justify-center shrink-0 border-4 border-blue-200/30 overflow-hidden">
                             <img src="/img/Logo Dwisma.png" alt="Logo Dwisma" class="w-full h-full object-contain">
@@ -199,16 +220,15 @@
                         <div class="space-y-1">
                             <div class="flex items-center gap-2 mb-1">
                                 <span
-                                    class="bg-yellow-400 text-blue-900 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm">Official
-                                    System</span>
+                                    class="bg-yellow-400 text-blue-900 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm">APLIKASI</span>
                             </div>
                             <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight leading-tight">
-                                Aplikasi Pemilihan Mapel <br />
+                                Pemilihan Mapel <br />
                                 <span class="text-yellow-300">DWISMA</span>
                             </h1>
                             <p id="subTitleHeader"
                                 class="text-blue-100 text-sm font-medium tracking-wide opacity-90 border-l-2 border-yellow-400 pl-3 mt-2">
-                                Kurikulum Merdeka • Tahun Ajaran 2025/2026
+                                SMA Negeri 2 Mengwi • Tahun Ajaran 2025/2026
                             </p>
                         </div>
                     </div>
@@ -259,10 +279,10 @@
             class="mt-8 text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-4 px-4 opacity-70">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-shield-halved text-blue-600 text-xs"></i>
-                <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-widest">© 2026 SMAN DWISMA •
-                    Secure System</p>
+                <p class="text-slate-500 text-[11px] font-semibold uppercase tracking-widest">© 2026 •
+                    TIM TEKNOLOGI INFORMASI</p>
             </div>
-            <p class="text-[10px] text-slate-400">Versi 5.2 (Monitoring Belum Memilih)</p>
+            <p class="text-[10px] text-slate-400">SMA NEGERI 2 MENGWI</p>
         </div>
     </div>
 
@@ -293,12 +313,12 @@
         // KONFIGURASI API (WAJIB DIISI)
         // ============================================
         const API_URL = "https://script.google.com/macros/s/AKfycbzudDNj3qz59nc4igQ-LQsN9c2um62YGf26s0EiqINk0aJUMEzgv5bDa5ZgHBnFnDhcGA/exec";
-        // Contoh: https://script.google.com/macros/s/AKfycbx.../exec
 
         let sessionSiswa = null;
         let allUsersData = [];
         let rawActivities = [];
-        let currentMonitorView = 'log'; // 'log' | 'unselected'
+        let currentMonitorView = 'log';
+        let isSystemOpen = true; // Default
 
         // === CLIENT SIDE API HANDLER ===
         async function callAPI(action, payload = null) {
@@ -325,7 +345,7 @@
         function startApp() {
             callAPI('getAllUsers').then(data => {
                 allUsersData = data || [];
-                checkLoginStatus(); // Cek login awal
+                checkLoginStatus();
             });
         }
 
@@ -448,12 +468,34 @@
                 if (res && res.success) {
                     sessionSiswa = res;
                     updateHeaderInfo(res.nama, res.kelas);
+
+                    // --- NEW: SYSTEM CLOSED CHECK ---
+                    // If system is CLOSED (res.isSystemOpen === false) AND user hasn't chosen yet
+                    if (res.isSystemOpen === false && !res.sudahMemilih) {
+                        renderClosedPage();
+                        return;
+                    }
+
                     res.sudahMemilih ? renderHasilPilihan(res) : renderSiswaForm();
                 } else {
                     alert(res ? res.message : "Gagal menghubungi server.");
                     renderGuestForm();
                 }
             });
+        }
+
+        function renderClosedPage() {
+            document.getElementById('mainContent').innerHTML = `
+            <div class="text-center py-20 fade-in max-w-lg mx-auto">
+                <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                   <i class="fa-solid fa-calendar-xmark text-4xl text-red-600"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800 mb-2">Pendaftaran Ditutup</h2>
+                <p class="text-slate-500 mb-8 leading-relaxed">Mohon maaf, sesi pemilihan mata pelajaran ditutup. Hubungi Guru BK jika ada kendala.</p>
+                
+                <button onclick="renderGuestForm()" class="text-slate-400 hover:text-blue-600 font-bold text-sm">Kembali ke Halaman Utama</button>
+            </div>
+          `;
         }
 
         function reloadSession() {
@@ -695,13 +737,11 @@
             const activeClass = "flex-1 py-3 text-sm font-bold rounded-lg transition-all border shadow-sm tab-active whitespace-nowrap px-4 min-w-fit";
             const inactiveClass = "flex-1 py-3 text-sm font-bold rounded-lg transition-all border border-transparent text-slate-500 hover:bg-slate-200 hover:text-slate-700 whitespace-nowrap px-4 min-w-fit";
 
-            // Reset all to inactive
             tabMon.className = inactiveClass;
             tabMap.className = inactiveClass;
             tabSiswa.className = inactiveClass;
             tabAdmin.className = inactiveClass;
 
-            // Set active based on name
             if (tabName === 'monitoring') {
                 tabMon.className = activeClass;
                 loadMonitoringData();
@@ -716,6 +756,59 @@
                 loadStaffManager();
             }
         }
+
+        // --- BULK DELETE HELPERS ---
+        function toggleAll(source, targetClass) {
+            const checkboxes = document.querySelectorAll(`.${targetClass}`);
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateBulkBtn(targetClass, source.getAttribute('data-btn'));
+        }
+
+        function updateBulkBtn(targetClass, btnId) {
+            const checked = document.querySelectorAll(`.${targetClass}:checked`).length;
+            const btn = document.getElementById(btnId);
+            const countSpan = document.getElementById(btnId + '-count');
+            if (btn) {
+                if (checked > 0) {
+                    btn.classList.remove('hidden');
+                    if (countSpan) countSpan.innerText = checked;
+                } else {
+                    btn.classList.add('hidden');
+                }
+            }
+        }
+
+        async function processBulkDelete(targetClass, btnId, deleteFunction, idField) {
+            const checkedBoxes = Array.from(document.querySelectorAll(`.${targetClass}:checked`));
+            const total = checkedBoxes.length;
+            if (total === 0) return;
+
+            if (!confirm(`⚠️ HAPUS MASSAL:\n\nAnda akan menghapus ${total} data terpilih.\nTindakan ini tidak dapat dibatalkan.\n\nLanjutkan?`)) return;
+
+            const btn = document.getElementById(btnId);
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+
+            for (let i = 0; i < total; i++) {
+                const val = checkedBoxes[i].value;
+                btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Hapus ${i + 1}/${total}...`;
+                try {
+                    await callAPI(deleteFunction, val);
+                } catch (e) {
+                    console.error("Gagal hapus " + val);
+                }
+            }
+
+            btn.innerHTML = `<i class="fa-solid fa-check"></i> Selesai!`;
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                // Refresh current tab
+                const activeTab = document.querySelector('.tab-active');
+                if (activeTab) activeTab.click();
+            }, 1000);
+        }
+
 
         // --- TAB 1: MONITORING ---
         function loadMonitoringData() {
@@ -737,7 +830,6 @@
         }
 
         function renderMonitorContent() {
-            // VIEW TOGGLE BUTTONS
             const btnClassActive = "px-4 py-2 bg-white text-blue-700 font-bold text-xs rounded-lg shadow-sm border border-slate-200 transition-all";
             const btnClassInactive = "px-4 py-2 text-slate-500 font-bold text-xs hover:bg-slate-100 rounded-lg transition-all";
 
@@ -776,10 +868,8 @@
 
             let content = "";
             if (currentMonitorView === 'log') {
-                // LOGIC VIEW LOG (EXISTING)
                 content = renderActivityLog();
             } else {
-                // LOGIC VIEW UNSELECTED
                 content = renderUnselectedList();
             }
 
@@ -808,6 +898,7 @@
                 const user = allUsersData.find(u => String(u.nisn) === String(p.nisn));
                 return `
             <tr class="group border-b border-slate-100 hover:bg-blue-50/50 transition-colors">
+              <td class="py-4 px-4 text-center"><input type="checkbox" class="custom-checkbox check-log" value="${p.nisn}" onclick="updateBulkBtn('check-log', 'btn-del-log')"></td>
               <td class="py-4 px-4 text-center text-xs font-bold text-slate-400">${index + 1}</td>
               <td class="py-4 px-4">
                 <div class="flex items-center gap-3">
@@ -832,6 +923,11 @@
             <div class="flex flex-col md:flex-row justify-between items-end md:items-center gap-6">
               <div class="space-y-1"><h2 class="text-xl font-bold text-slate-800">Log Aktivitas</h2><p class="text-xs text-slate-500">Real-time update.</p></div>
               <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                 <!-- Bulk Button -->
+                 <button id="btn-del-log" onclick="processBulkDelete('check-log', 'btn-del-log', 'deletePilihan')" class="hidden px-4 py-2.5 bg-red-600 text-white rounded-lg font-bold text-xs shadow-md hover:bg-red-700 transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-trash"></i> Hapus Terpilih (<span id="btn-del-log-count">0</span>)
+                 </button>
+
                 <div class="relative">
                     <i class="fa-solid fa-filter absolute left-3 top-3.5 text-slate-400 text-xs"></i>
                     <select id="filterKelas" onchange="renderMonitorContent()" class="pl-8 pr-8 py-2.5 text-xs font-bold border border-slate-200 rounded-lg bg-white text-slate-600 outline-none focus:border-blue-500 transition-all cursor-pointer">
@@ -852,6 +948,7 @@
                 <table class="w-full text-left border-collapse">
                   <thead>
                     <tr class="bg-slate-50 border-b border-slate-200">
+                      <th class="py-4 px-4 text-center"><input type="checkbox" class="custom-checkbox" data-btn="btn-del-log" onclick="toggleAll(this, 'check-log')"></th>
                       <th class="py-4 px-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">No</th>
                       <th class="py-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Identitas Siswa</th>
                       <th class="py-4 px-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kelas</th>
@@ -860,7 +957,7 @@
                       <th class="py-4 px-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-slate-100">${tableRows || '<tr><td colspan="6" class="py-12 text-center text-slate-400 font-medium italic bg-slate-50/50">Belum ada data terekam</td></tr>'}</tbody>
+                  <tbody class="divide-y divide-slate-100">${tableRows || '<tr><td colspan="7" class="py-12 text-center text-slate-400 font-medium italic bg-slate-50/50">Belum ada data terekam</td></tr>'}</tbody>
                 </table>
               </div>
             </div>
@@ -928,8 +1025,38 @@
             <p class="text-slate-400 font-bold text-xs tracking-widest uppercase">Memuat Konfigurasi...</p>
           </div>`;
 
-            callAPI('getMapelOptions').then(mapels => {
-                renderMapelManager(mapels || []);
+            // --- NEW: FETCH SYSTEM STATUS & MAPEL ---
+            Promise.all([callAPI('getMapelOptions'), callAPI('getSystemStatus')]).then(values => {
+                const mapels = values[0] || [];
+                const status = values[1]; // Expected { isOpen: boolean }
+                isSystemOpen = status ? status.isOpen : true;
+                renderMapelManager(mapels);
+            });
+        }
+
+        function toggleSystemStatus() {
+            const toggle = document.getElementById('systemToggle');
+            const newState = toggle.checked;
+            const label = document.getElementById('systemStatusLabel');
+
+            // Optimistic UI Update
+            if (newState) {
+                label.innerText = "PENDAFTARAN DIBUKA";
+                label.classList.remove("text-red-500");
+                label.classList.add("text-green-500");
+            } else {
+                label.innerText = "PENDAFTARAN DITUTUP";
+                label.classList.remove("text-green-500");
+                label.classList.add("text-red-500");
+            }
+
+            callAPI('updateSystemStatus', newState).then(res => {
+                if (!res || !res.success) {
+                    alert("Gagal update status!");
+                    toggle.checked = !newState; // Revert
+                } else {
+                    isSystemOpen = newState;
+                }
             });
         }
 
@@ -937,6 +1064,7 @@
             let mapelRows = mapels.map((m, index) => {
                 return `
             <tr class="border-b border-slate-100 hover:bg-slate-50">
+               <td class="py-4 px-4 text-center"><input type="checkbox" class="custom-checkbox check-mapel" value="${m.nama}" onclick="updateBulkBtn('check-mapel', 'btn-del-mapel')"></td>
                <td class="py-4 px-4 text-center text-xs font-bold text-slate-400">${index + 1}</td>
                <td class="py-4 px-4 font-bold text-slate-700">${m.nama}</td>
                <td class="py-4 px-4 text-center">
@@ -954,11 +1082,32 @@
             `;
             }).join('');
 
+            const statusColor = isSystemOpen ? "text-green-500" : "text-red-500";
+            const statusText = isSystemOpen ? "PENDAFTARAN DIBUKA" : "PENDAFTARAN DITUTUP";
+
             document.getElementById('dashboardContent').innerHTML = `
             <div class="fade-in grid grid-cols-1 md:grid-cols-3 gap-8">
                
-               <div class="md:col-span-1">
-                  <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm sticky top-6">
+               <div class="md:col-span-1 space-y-6">
+                  <!-- STATUS CARD -->
+                  <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                      <div class="absolute top-0 right-0 w-20 h-20 bg-slate-50 rounded-full -mr-6 -mt-6"></div>
+                      <div class="relative z-10">
+                          <h3 class="font-bold text-slate-800 mb-4">Status Aplikasi</h3>
+                          <div class="flex items-center justify-between">
+                              <p id="systemStatusLabel" class="text-xs font-extrabold tracking-widest ${statusColor}">${statusText}</p>
+                              
+                              <div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="toggle" id="systemToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 border-slate-300" ${isSystemOpen ? 'checked' : ''} onclick="toggleSystemStatus()"/>
+                                <label for="systemToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer transition-colors duration-300"></label>
+                              </div>
+                          </div>
+                          <p class="text-[10px] text-slate-400 mt-3">Jika ditutup, siswa tidak dapat mengakses form pemilihan.</p>
+                      </div>
+                  </div>
+
+                  <!-- TAMBAH PAKET -->
+                  <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                      <div class="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
                         <i class="fa-solid fa-plus-circle text-blue-600"></i>
                         <h3 class="font-bold text-slate-800">Tambah Paket Baru</h3>
@@ -987,13 +1136,19 @@
                <div class="md:col-span-2">
                   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                      <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-700 text-sm">Daftar Paket Tersedia</h3>
-                        <span class="bg-blue-100 text-blue-600 text-xs font-bold px-2 py-1 rounded">${mapels.length} Paket</span>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-slate-700 text-sm">Daftar Paket</h3>
+                            <span class="bg-blue-100 text-blue-600 text-xs font-bold px-2 py-1 rounded">${mapels.length}</span>
+                        </div>
+                        <button id="btn-del-mapel" onclick="processBulkDelete('check-mapel', 'btn-del-mapel', 'deleteMapelConfig')" class="hidden px-3 py-1.5 bg-red-600 text-white rounded-lg font-bold text-xs shadow-md hover:bg-red-700 transition-all flex items-center gap-2">
+                             <i class="fa-solid fa-trash"></i> Hapus (<span id="btn-del-mapel-count">0</span>)
+                        </button>
                      </div>
                      <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                            <thead>
                               <tr class="bg-slate-50 border-b border-slate-200">
+                                 <th class="py-3 px-4 text-center"><input type="checkbox" class="custom-checkbox" data-btn="btn-del-mapel" onclick="toggleAll(this, 'check-mapel')"></th>
                                  <th class="py-3 px-4 text-center text-[10px] font-bold text-slate-500 uppercase">No</th>
                                  <th class="py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">Nama Paket</th>
                                  <th class="py-3 px-4 text-center text-[10px] font-bold text-slate-500 uppercase">Kuota</th>
@@ -1002,7 +1157,7 @@
                               </tr>
                            </thead>
                            <tbody>
-                              ${mapelRows || '<tr><td colspan="5" class="py-8 text-center text-slate-400 text-sm italic">Belum ada paket mapel dibuat.</td></tr>'}
+                              ${mapelRows || '<tr><td colspan="6" class="py-8 text-center text-slate-400 text-sm italic">Belum ada paket mapel dibuat.</td></tr>'}
                            </tbody>
                         </table>
                      </div>
@@ -1061,6 +1216,7 @@
 
             let rows = validUsers.map((u, index) => `
             <tr class="border-b border-slate-100 hover:bg-slate-50">
+               <td class="py-3 px-4 text-center"><input type="checkbox" class="custom-checkbox check-siswa" value="${u.nisn}" onclick="updateBulkBtn('check-siswa', 'btn-del-siswa')"></td>
                <td class="py-3 px-4 text-center text-xs font-bold text-slate-400">${index + 1}</td>
                <td class="py-3 px-4 font-mono text-xs font-bold text-slate-500">${u.nisn}</td>
                <td class="py-3 px-4 font-bold text-slate-700 text-sm">${u.nama}</td>
@@ -1110,13 +1266,19 @@
                <div class="md:col-span-2">
                   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                      <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-700 text-sm">Database Siswa</h3>
-                        <span class="bg-indigo-100 text-indigo-600 text-xs font-bold px-2 py-1 rounded">${validUsers.length} Siswa</span>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-slate-700 text-sm">Database Siswa</h3>
+                            <span class="bg-indigo-100 text-indigo-600 text-xs font-bold px-2 py-1 rounded">${validUsers.length}</span>
+                        </div>
+                        <button id="btn-del-siswa" onclick="processBulkDelete('check-siswa', 'btn-del-siswa', 'deleteSiswa')" class="hidden px-3 py-1.5 bg-red-600 text-white rounded-lg font-bold text-xs shadow-md hover:bg-red-700 transition-all flex items-center gap-2">
+                             <i class="fa-solid fa-trash"></i> Hapus (<span id="btn-del-siswa-count">0</span>)
+                        </button>
                      </div>
                      <div class="overflow-x-auto max-h-[500px]">
                         <table class="w-full text-left border-collapse">
                            <thead class="sticky top-0 bg-slate-50 shadow-sm z-10">
                               <tr class="border-b border-slate-200">
+                                 <th class="py-3 px-4 text-center"><input type="checkbox" class="custom-checkbox" data-btn="btn-del-siswa" onclick="toggleAll(this, 'check-siswa')"></th>
                                  <th class="py-3 px-4 text-center text-[10px] font-bold text-slate-500 uppercase">No</th>
                                  <th class="py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">NISN</th>
                                  <th class="py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">Nama</th>
@@ -1125,7 +1287,7 @@
                               </tr>
                            </thead>
                            <tbody>
-                              ${rows || '<tr><td colspan="5" class="py-8 text-center text-slate-400 text-sm italic">Belum ada data siswa.</td></tr>'}
+                              ${rows || '<tr><td colspan="6" class="py-8 text-center text-slate-400 text-sm italic">Belum ada data siswa.</td></tr>'}
                            </tbody>
                         </table>
                      </div>
@@ -1182,6 +1344,7 @@
         function renderStaffManager(staffs) {
             let rows = staffs.map((s, index) => `
             <tr class="border-b border-slate-100 hover:bg-slate-50">
+               <td class="py-3 px-4 text-center"><input type="checkbox" class="custom-checkbox check-staff" value="${s.email}" onclick="updateBulkBtn('check-staff', 'btn-del-staff')"></td>
                <td class="py-3 px-4 text-center text-xs font-bold text-slate-400">${index + 1}</td>
                <td class="py-3 px-4 font-bold text-slate-600 text-xs">${s.email}</td>
                <td class="py-3 px-4 font-bold text-slate-800 text-sm">${s.nama}</td>
@@ -1235,13 +1398,19 @@
                <div class="md:col-span-2">
                   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                      <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-700 text-sm">Pengelola Aplikasi</h3>
-                        <span class="bg-red-50 text-red-600 text-xs font-bold px-2 py-1 rounded">${staffs.length} Admin</span>
+                        <div class="flex items-center gap-2">
+                             <h3 class="font-bold text-slate-700 text-sm">Pengelola Aplikasi</h3>
+                             <span class="bg-red-50 text-red-600 text-xs font-bold px-2 py-1 rounded">${staffs.length}</span>
+                        </div>
+                        <button id="btn-del-staff" onclick="processBulkDelete('check-staff', 'btn-del-staff', 'deleteStaff')" class="hidden px-3 py-1.5 bg-red-600 text-white rounded-lg font-bold text-xs shadow-md hover:bg-red-700 transition-all flex items-center gap-2">
+                             <i class="fa-solid fa-trash"></i> Hapus (<span id="btn-del-staff-count">0</span>)
+                        </button>
                      </div>
                      <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                            <thead class="bg-slate-50">
                               <tr class="border-b border-slate-200">
+                                 <th class="py-3 px-4 text-center"><input type="checkbox" class="custom-checkbox" data-btn="btn-del-staff" onclick="toggleAll(this, 'check-staff')"></th>
                                  <th class="py-3 px-4 text-center text-[10px] font-bold text-slate-500 uppercase">No</th>
                                  <th class="py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">Email</th>
                                  <th class="py-3 px-4 text-[10px] font-bold text-slate-500 uppercase">Nama</th>
@@ -1250,7 +1419,7 @@
                               </tr>
                            </thead>
                            <tbody>
-                              ${rows || '<tr><td colspan="5" class="py-8 text-center text-slate-400 text-sm italic">Belum ada admin terdaftar.</td></tr>'}
+                              ${rows || '<tr><td colspan="6" class="py-8 text-center text-slate-400 text-sm italic">Belum ada admin terdaftar.</td></tr>'}
                            </tbody>
                         </table>
                      </div>
