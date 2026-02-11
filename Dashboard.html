@@ -1,0 +1,164 @@
+<script>
+    /**
+     * Fungsi utama Dashboard BK
+     */
+    function initDashboardStaff(user) {
+        const badge = document.getElementById('userBadge');
+        const mainContent = document.getElementById('mainContent');
+        const userNameElem = document.getElementById('userName');
+        const userRoleElem = document.getElementById('userRole');
+        const subTitleElem = document.getElementById('subTitleHeader');
+
+        if (!mainContent) return;
+
+        // Update identitas pengguna di Header jika element tersedia
+        if (user) {
+            if (badge) badge.classList.remove('hidden');
+            if (userNameElem) userNameElem.innerText = user.nama || "Admin";
+            if (userRoleElem) userRoleElem.innerText = user.role || "Staff";
+            if (subTitleElem) subTitleElem.innerText = "Panel Monitoring Guru BK";
+        }
+
+        // Tampilkan loading spinner
+        mainContent.innerHTML = `
+    <div class="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+      <div class="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-indigo-600 mb-6"></div>
+      <p class="text-gray-600 font-medium">Menghubungkan ke Spreadsheet...</p>
+      <p class="text-gray-400 text-xs mt-2">Mohon tunggu sebentar</p>
+    </div>
+  `;
+
+        // Ambil data dari server
+        google.script.run
+            .withSuccessHandler(data => {
+                if (!data) {
+                    showDashboardError("Server mengembalikan data kosong. Pastikan Spreadsheet ID benar.");
+                    return;
+                }
+                if (data.error) {
+                    showDashboardError("Spreadsheet Error: " + data.error);
+                    return;
+                }
+                renderDashboardUI(data);
+            })
+            .withFailureHandler(err => {
+                showDashboardError("Gagal terhubung ke Google Script: " + err.message);
+            })
+            .getDashboardData();
+    }
+
+    function showDashboardError(msg) {
+        const mainContent = document.getElementById('mainContent');
+        if (mainContent) {
+            mainContent.innerHTML = `
+      <div class="p-8 text-center bg-red-50 text-red-700 rounded-3xl border border-red-200 fade-in">
+        <h3 class="text-lg font-bold mb-2">Terjadi Kesalahan</h3>
+        <p class="text-sm opacity-80 mb-6">${msg}</p>
+        <button onclick="location.reload()" class="bg-red-600 text-white px-6 py-2 rounded-full font-bold shadow-lg">Muat Ulang Halaman</button>
+      </div>
+    `;
+        }
+    }
+
+    function renderDashboardUI(data) {
+        const statsEntries = Object.entries(data.stats || {});
+        const statsHtml = statsEntries.length > 0
+            ? statsEntries.map(([name, count]) => `
+        <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-center hover:shadow-md transition-shadow">
+          <p class="text-[10px] uppercase tracking-widest text-gray-400 font-black mb-1 truncate" title="${name}">${name}</p>
+          <p class="text-3xl font-black text-indigo-600">${count}</p>
+        </div>
+      `).join('')
+            : '<div class="bg-gray-50 p-6 rounded-2xl border border-dashed border-gray-200 text-center col-span-full text-gray-400 text-xs">Belum ada data mata pelajaran.</div>';
+
+        const logs = data.recentLogs || [];
+        const tableRows = logs.length > 0
+            ? logs.map((row, i) => {
+                let timeStr = "-";
+                try {
+                    if (row[0]) {
+                        const d = new Date(row[0]);
+                        timeStr = d.getHours().toString().padStart(2, '0') + ":" + d.getMinutes().toString().padStart(2, '0');
+                    }
+                } catch (e) { timeStr = "Error"; }
+
+                return `
+          <tr class="text-sm border-b border-gray-50 hover:bg-indigo-50/50 transition-colors">
+            <td class="p-4 text-gray-300 font-medium">${i + 1}</td>
+            <td class="p-4 font-bold text-gray-700">${row[1] || '-'}</td>
+            <td class="p-4"><span class="px-3 py-1 rounded-lg bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-wider">${row[2] || '-'}</span></td>
+            <td class="p-4 text-right text-gray-400 text-xs font-mono">${timeStr}</td>
+          </tr>
+        `;
+            }).join('')
+            : '<tr><td colspan="4" class="p-16 text-center text-gray-400 italic">Belum ada aktivitas pemilihan hari ini.</td></tr>';
+
+        document.getElementById('mainContent').innerHTML = `
+    <div class="fade-in space-y-8">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-black text-gray-800 tracking-tight">Statistik Real-time</h2>
+          <p class="text-gray-400 text-xs">Data diperbarui secara otomatis setiap kali dimuat</p>
+        </div>
+        <button onclick="refreshDashboardData()" class="bg-indigo-600 text-white p-3 rounded-2xl hover:bg-indigo-700 transition-all active:scale-90 shadow-lg shadow-indigo-100 group">
+           <svg class="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div class="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-3xl text-white shadow-xl flex flex-col justify-between min-h-[160px]">
+          <div>
+            <p class="text-indigo-100 text-xs font-bold uppercase tracking-widest opacity-80">Total Siswa Memilih</p>
+            <h3 class="text-6xl font-black mt-2">${data.totalSiswa || 0}</h3>
+          </div>
+          <div class="text-[10px] text-indigo-200 font-medium">Target: Semua Siswa XI</div>
+        </div>
+        <div class="lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-4">${statsHtml}</div>
+      </div>
+
+      <div class="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-100/50 overflow-hidden">
+        <div class="p-5 bg-gray-50/50 border-b flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div><h3 class="font-bold text-gray-700 text-xs uppercase tracking-widest">Aktivitas Terakhir</h3></div>
+          <div class="relative w-full sm:w-64">
+            <input type="text" id="dbSearch" onkeyup="filterTable()" placeholder="Cari NISN..." class="w-full text-xs pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+            <svg class="w-4 h-4 absolute left-3 top-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse" id="logTable">
+            <thead>
+              <tr class="bg-gray-50/30 text-gray-400 text-[10px] uppercase font-bold border-b tracking-widest">
+                <th class="p-4">No</th><th class="p-4">NISN Siswa</th><th class="p-4">Pilihan Mapel</th><th class="p-4 text-right">Waktu</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+    }
+
+    function refreshDashboardData() {
+        const user = {
+            nama: document.getElementById('userName').innerText,
+            role: document.getElementById('userRole').innerText
+        };
+        initDashboardStaff(user);
+    }
+
+    function filterTable() {
+        const input = document.getElementById("dbSearch");
+        if (!input) return;
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById("logTable");
+        const tr = table.getElementsByTagName("tr");
+        for (let i = 1; i < tr.length; i++) {
+            const td = tr[i].getElementsByTagName("td")[1];
+            if (td) {
+                const text = td.textContent || td.innerText;
+                tr[i].style.display = text.toUpperCase().indexOf(filter) > -1 ? "" : "none";
+            }
+        }
+    }
+</script>
