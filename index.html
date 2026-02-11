@@ -904,7 +904,7 @@
                 <div class="flex items-center gap-3">
                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600 uppercase border border-blue-200">${user ? user.nama.charAt(0) : '?'}</div>
                    <div>
-                      <p class="font-bold text-slate-700 text-sm">${user ? user.nama : 'Tidak Dikenal'}</p>
+                      <p class="font-bold text-slate-700 text-sm">${user ? sanitizeHTML(user.nama) : 'Tidak Dikenal'}</p>
                       <p class="text-[10px] text-slate-400 font-mono">NISN: ${p.nisn}</p>
                    </div>
                 </div>
